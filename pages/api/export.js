@@ -1,33 +1,29 @@
-import fs from 'fs';
-import path from 'path';
+import { Redis } from '@upstash/redis';
 import defaultLeads from '../../lib/leads';
 
-const DATA_FILE = path.join('/tmp', 'callsheet.json');
+const redis = Redis.fromEnv();
+const KEY = 'callsheet:data';
 
-function readData() {
+async function readData() {
   try {
-    if (fs.existsSync(DATA_FILE)) {
-      return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-    }
+    const data = await redis.get(KEY);
+    if (data) return typeof data === 'string' ? JSON.parse(data) : data;
   } catch (e) {}
   return { leads: defaultLeads, state: {} };
 }
 
-export default function handler(req, res) {
-  const { leads, state } = readData();
-  const rows = [['Name','Title','Organization','Phone','Email','Quote #','Quote Name','Monthly','Upfront','Created','Expiry','Expired','Result','Notes']];
-  leads.forEach(l => {
-    const key = l._key || (l.phone + '|' + l.org);
-    const s = state[key] || {};
-    rows.push([
-      `${l.firstName} ${l.lastName}`, l.title, l.org, l.phone, l.email,
-      l.quoteNum || '', l.quoteName, l.monthly || '', l.upfront || '',
-      l.created, l.expiry || '', l.expired ? 'Yes' : 'No',
+export default async function handler(req, res) {
+  const data = await readData();
+  const rows = data.leads.map(l => {
+    const s = data.state[l._key] || {};
+    return [
+      l.quoteNum, l.firstName, l.lastName, l.org, l.phone, l.email,
+      l.monthly, l.upfront, l.created, l.expiry,
       s.result || 'pending', s.note || ''
-    ]);
+    ].map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',');
   });
-  const csv = rows.map(r => r.map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const csv = ['Quote#,First,Last,Org,Phone,Email,Monthly,Upfront,Created,Expiry,Result,Note', ...rows].join('\n');
   res.setHeader('Content-Type', 'text/csv');
-  res.setHeader('Content-Disposition', `attachment; filename="call_results_${new Date().toISOString().split('T')[0]}.csv"`);
-  res.status(200).send(csv);
+  res.setHeader('Content-Disposition', 'attachment; filename="callsheet.csv"');
+  return res.status(200).send(csv);
 }

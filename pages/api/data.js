@@ -1,30 +1,29 @@
-import fs from 'fs';
-import path from 'path';
+import { Redis } from '@upstash/redis';
 import defaultLeads from '../../lib/leads';
 
-const DATA_FILE = path.join('/tmp', 'callsheet.json');
+const redis = Redis.fromEnv();
+const KEY = 'callsheet:data';
 
-function readData() {
+async function readData() {
   try {
-    if (fs.existsSync(DATA_FILE)) {
-      return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-    }
+    const data = await redis.get(KEY);
+    if (data) return typeof data === 'string' ? JSON.parse(data) : data;
   } catch (e) {}
   return { leads: defaultLeads, state: {} };
 }
 
-function writeData(data) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data));
+async function writeData(data) {
+  await redis.set(KEY, JSON.stringify(data));
 }
 
-export default function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method === 'GET') {
-    const data = readData();
+    const data = await readData();
     return res.status(200).json(data);
   }
 
   if (req.method === 'POST') {
-    const data = readData();
+    const data = await readData();
     const { action, payload } = req.body;
 
     if (action === 'updateState') {
@@ -32,7 +31,7 @@ export default function handler(req, res) {
       if (!data.state[key]) data.state[key] = {};
       if (result !== undefined) data.state[key].result = result;
       if (note !== undefined) data.state[key].note = note;
-      writeData(data);
+      await writeData(data);
       return res.status(200).json({ ok: true });
     }
 
@@ -41,7 +40,7 @@ export default function handler(req, res) {
       lead._key = lead.phone + '|' + lead.org;
       data.leads.unshift(lead);
       if (!data.state[lead._key]) data.state[lead._key] = { result: 'pending', note: '' };
-      writeData(data);
+      await writeData(data);
       return res.status(200).json({ ok: true, lead });
     }
 
@@ -49,7 +48,7 @@ export default function handler(req, res) {
       const { key } = payload;
       data.leads = data.leads.filter(l => l._key !== key && (l.phone + '|' + l.org) !== key);
       delete data.state[key];
-      writeData(data);
+      await writeData(data);
       return res.status(200).json({ ok: true });
     }
 
