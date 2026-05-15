@@ -154,6 +154,7 @@ export default function Home() {
             </div>
             <Btn onClick={() => setShowAdd(true)}>+ Add lead</Btn>
             <Btn as="a" href="/api/export">⬇ Export CSV</Btn>
+            <Btn onClick={async () => { await fetch("/api/logout", { method: "POST" }); window.location.href = "/login"; }} style={{ background: "#fff", color: "#888", border: "1px solid #e8e8e2" }}>Sign out</Btn>
           </div>
 
           {/* Stats */}
