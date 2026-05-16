@@ -38,6 +38,7 @@ export default function Home() {
   const [search, setSearch] = useState('');
   const [showAdd, setShowAdd] = useState(false);
   const [saving, setSaving] = useState({});
+  const [followupNames, setFollowupNames] = useState([]);
   const [form, setForm] = useState({
     firstName: '', lastName: '', title: '', org: '', phone: '', email: '',
     quoteName: '', quoteNum: '', monthly: '', upfront: '', created: new Date().toISOString().split('T')[0], expiry: '', expired: 'false'
@@ -275,6 +276,25 @@ export default function Home() {
                               }}>{r.label}</span>
                             );
                           })}
+                        </div>
+                      </div>
+
+                      {/* Following up */}
+                      <div style={{ marginBottom: 12 }}>
+                        <div style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 6 }}>Following up</div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <select
+                            value={s.followup || ''}
+                            onChange={e => setFollowup(key, e.target.value)}
+                            style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, background: '#fff' }}>
+                            <option value=''>— unassigned —</option>
+                            {followupNames.map(n => <option key={n} value={n}>{n}</option>)}
+                          </select>
+                          <input
+                            type='text'
+                            placeholder='Add name…'
+                            onKeyDown={e => { if (e.key === 'Enter' && e.target.value.trim()) { setFollowup(key, e.target.value.trim()); e.target.value = ''; } }}
+                            style={{ width: 120, padding: '8px 10px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13 }} />
                         </div>
                       </div>
 

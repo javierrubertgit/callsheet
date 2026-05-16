@@ -33,10 +33,11 @@ export default async function handler(req, res) {
     const { action, payload } = req.body;
 
     if (action === 'updateState') {
-      const { key, result, note } = payload;
+      const { key, result, note, followup } = payload;
       if (!data.state[key]) data.state[key] = {};
       if (result !== undefined) data.state[key].result = result;
       if (note !== undefined) data.state[key].note = note;
+      if (followup !== undefined) data.state[key].followup = followup;
       await writeData(data);
       return res.status(200).json({ ok: true });
     }
@@ -48,6 +49,12 @@ export default async function handler(req, res) {
       if (!data.state[lead._key]) data.state[lead._key] = { result: 'pending', note: '' };
       await writeData(data);
       return res.status(200).json({ ok: true, lead });
+    }
+
+    if (action === 'saveFollowupNames') {
+      data.followupNames = payload.names;
+      await writeData(data);
+      return res.status(200).json({ ok: true });
     }
 
     if (action === 'removeLead') {
@@ -63,3 +70,4 @@ export default async function handler(req, res) {
 
   res.status(405).end();
 }
+// Already handled in the POST block above - just need saveFollowupNames action
