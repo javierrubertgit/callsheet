@@ -59,7 +59,7 @@ export default async function handler(req, res) {
   lead._key = key;
 
   const data = await readData();
-  const idx = data.leads.findIndex(l => l._key === key);
+  const idx = data.leads.findIndex(l => l._key === key || (l.phone + "|" + l.org) === key || (l.phone === lead.phone && l.org === lead.org));
   if (idx >= 0) {
     data.leads[idx] = { ...data.leads[idx], ...lead, _key: key };
   } else {
