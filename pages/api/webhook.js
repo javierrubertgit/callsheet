@@ -1,92 +1,50 @@
 import { Redis } from '@upstash/redis';
 import defaultLeads from '../../lib/leads';
-
 const redis = new Redis({ url: process.env.KV_REST_API_URL, token: process.env.KV_REST_API_TOKEN });
 const KEY = 'callsheet:data';
-
 async function readData() {
   try {
     const data = await redis.get(KEY);
-    if (data) {
-      const parsed = typeof data === 'string' ? JSON.parse(data) : data;
-      if (parsed?.leads?.length > 0) return parsed;
-    }
-  } catch (e) {}
+    if (data) { const p = typeof data === 'string' ? JSON.parse(data) : data; if (p?.leads?.length > 0) return p; }
+  } catch(e) {}
   const fresh = { leads: defaultLeads.map(l => ({ ...l, _key: l._key || (l.phone + '|' + l.org) })), state: {} };
   await redis.set(KEY, JSON.stringify(fresh));
   return fresh;
 }
-
-async function writeData(data) {
-  await redis.set(KEY, JSON.stringify(data));
-}
-
-function parseQuoterPayload(req) {
-  let b = req.body;
-  
-  // Quoter wraps data in a 'data' field as JSON string
-  if (b?.data) {
-    try { b = JSON.parse(b.data); } catch(e) { console.error('Failed to parse data field:', e); }
-  }
-  
-  console.log('Parsed body keys:', Object.keys(b || {}).join(', '));
-  console.log('Sample:', JSON.stringify(b).slice(0, 300));
-
-  if (!b) return null;
-  const contact = b.billing_contact || b.contact || {};
-  return {
-    firstName: b.billing_first_name || contact.first_name || b.first_name || '',
-    lastName:  b.billing_last_name  || contact.last_name  || b.last_name  || '',
-    title:     b.billing_title      || contact.title      || b.title      || '',
-    org:       b.billing_company    || b.organization     || contact.company || b.billing_organization || b.company || '',
-    phone:     b.billing_phone      || contact.phone      || b.phone      || '',
-    email:     b.billing_email      || contact.email      || b.email      || '',
-    quoteName: b.name || b.quote_name || 'Quoter Quote',
-    quoteNum:  parseInt(b.id || b.quote_number || 0) || 0,
-    uuid:      b.uuid || '',
-    quoteUrl:  b.uuid ? `https://conectacloudconsultants.quoter.com/quote/webview/${b.uuid}` : null,
-    created:   (b.created_at || new Date().toISOString()).split('T')[0],
-    expiry:    b.expiry_date ? b.expiry_date.split('T')[0] : null,
-    expired:   false, daysSince: 0,
-    monthly:   parseFloat(b.monthly_total || b.total?.recurring || 0) || null,
-    upfront:   parseFloat(b.upfront_total || b.one_time_total || b.total?.upfront || 0) || null,
-    status:    b.status || 'pending',
-  };
-}
-
+async function writeData(data) { await redis.set(KEY, JSON.stringify(data)); }
 export const config = { api: { bodyParser: true } };
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
-
-  const lead = parseQuoterPayload(req);
-  console.log('Lead org:', lead?.org, 'phone:', lead?.phone);
-
-  if (!lead) return res.status(400).json({ error: 'Bad payload' });
-  if (!lead.phone && !lead.email && !lead.org) {
-    console.log('Skipped - no contact info');
-    return res.status(200).json({ ok: true, skipped: 'no contact' });
-  }
-
-  const key = (lead.phone || lead.email) + '|' + (lead.org || lead.email);
+  let b = req.body;
+  await redis.set('last_webhook', JSON.stringify(b));
+  if (b?.data) { try { b = typeof b.data === 'string' ? JSON.parse(b.data) : b.data; } catch(e) {} }
+  const p = b?.person || {};
+  const firstName = b.billing_first_name || p.first_name || '';
+  const lastName  = b.billing_last_name  || p.last_name  || '';
+  const org       = b.billing_company || b.billing_organization || p.organization || b.organization || '';
+  const phone     = b.billing_phone || p.phone || b.phone || '';
+  const email     = b.billing_email || p.email || b.email || '';
+  const uuid      = b.uuid || '';
+  if (!phone && !email && !org) { await redis.set('last_webhook_skip', JSON.stringify(b)); return res.status(200).json({ ok: true, skipped: 'no contact' }); }
+  const lead = {
+    firstName, lastName, org, phone, email,
+    title: b.billing_title || p.title || '',
+    quoteName: b.name || 'Quoter Quote',
+    quoteNum: parseInt(b.id || 0) || 0,
+    uuid, quoteUrl: uuid ? `https://conectacloudconsultants.quoter.com/quote/webview/${uuid}` : null,
+    created: (b.created_at || new Date().toISOString()).split('T')[0],
+    expiry: b.expiry_date ? b.expiry_date.split('T')[0] : null,
+    expired: false, daysSince: 0,
+    monthly: parseFloat(b.monthly_total || b?.total?.recurring || 0) || null,
+    upfront: parseFloat(b.upfront_total || b?.total?.upfront || 0) || null,
+    status: b.status || 'pending',
+  };
+  const key = (phone || email) + '|' + (org || email);
   lead._key = key;
-
   const data = await readData();
-  const idx = data.leads.findIndex(l =>
-    l._key === key ||
-    (l.phone + '|' + l.org) === key ||
-    (l.phone === lead.phone && l.org === lead.org)
-  );
-
-  if (idx >= 0) {
-    data.leads[idx] = { ...data.leads[idx], ...lead, _key: key };
-    console.log('Updated existing lead at index', idx);
-  } else {
-    data.leads.unshift(lead);
-    if (!data.state[key]) data.state[key] = { result: 'pending', note: '' };
-    console.log('Added new lead, total now:', data.leads.length);
-  }
-
+  const idx = data.leads.findIndex(l => l._key === key || (l.phone === phone && l.org === org));
+  if (idx >= 0) { data.leads[idx] = { ...data.leads[idx], ...lead, _key: key }; }
+  else { data.leads.unshift(lead); if (!data.state[key]) data.state[key] = { result: 'pending', note: '' }; }
   await writeData(data);
   return res.status(200).json({ ok: true, lead });
 }
