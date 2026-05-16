@@ -32,7 +32,7 @@ export default function Home() {
   const [state, setState] = useState({});
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState({});
-  const [filterStatus, setFilterStatus] = useState('active');
+  const [filterStatus, setFilterStatus] = useState('pending');
   const [filterResult, setFilterResult] = useState('all');
   const [filterSort, setFilterSort] = useState('priority');
   const [search, setSearch] = useState('');
@@ -110,8 +110,11 @@ export default function Home() {
     let list = leads.filter(l => {
       const key = l._key;
       const s = state[key] || {};
+      if (filterStatus === 'pending' && (l.expired || ['won','accepted','ordered','lost'].includes((l.status||'').toLowerCase()))) return false;
       if (filterStatus === 'active' && l.expired) return false;
       if (filterStatus === 'expired' && !l.expired) return false;
+      if (filterStatus === 'won' && !['won','accepted','ordered'].includes((l.status||'').toLowerCase())) return false;
+      if (filterStatus === 'lost' && (l.status||'').toLowerCase() !== 'lost') return false;
       if (filterResult !== 'all' && (s.result || 'pending') !== filterResult) return false;
       if (q && !(l.firstName + ' ' + l.lastName + ' ' + l.org).toLowerCase().includes(q)) return false;
       return true;
@@ -180,7 +183,7 @@ export default function Home() {
           {/* Filters */}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: '1rem', alignItems: 'center' }}>
             {[
-              { id: 'fStatus', val: filterStatus, set: setFilterStatus, opts: [['all','All leads'],['active','Active only'],['expired','Expired only']] },
+              { id: 'fStatus', val: filterStatus, set: setFilterStatus, opts: [['pending','Pending only'],['all','All leads'],['active','Active only'],['expired','Expired only'],['won','Won/Ordered'],['lost','Lost']] },
               { id: 'fResult', val: filterResult, set: setFilterResult, opts: [['all','All results'],['pending','Not called'],['reached','Reached'],['vm','Voicemail'],['busy','Busy'],['noanswer','No answer'],['callback','Callback'],['done','Done']] },
               { id: 'fSort', val: filterSort, set: setFilterSort, opts: [['priority','Sort: priority'],['value','Sort: value ↓'],['age','Sort: newest first']] },
             ].map(({ id, val, set, opts }) => (
