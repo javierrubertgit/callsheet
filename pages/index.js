@@ -291,10 +291,15 @@ export default function Home() {
                             {followupNames.map(n => <option key={n} value={n}>{n}</option>)}
                           </select>
                           <input
+                            id={'fu-'+key}
                             type='text'
                             placeholder='Add name…'
-                            onKeyDown={e => { if (e.key === 'Enter' && e.target.value.trim()) { setFollowup(key, e.target.value.trim()); e.target.value = ''; } }}
-                            style={{ width: 120, padding: '8px 10px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13 }} />
+                            style={{ width: 100, padding: '8px 10px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13 }} />
+                          <button onClick={() => {
+                            const el = document.getElementById('fu-'+key);
+                            const name = el.value.trim();
+                            if (name) { setFollowup(key, name); el.value = ''; }
+                          }} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #0F6E56', background: '#0F6E56', color: '#fff', fontSize: 13, cursor: 'pointer' }}>Add</button>
                         </div>
                       </div>
 
