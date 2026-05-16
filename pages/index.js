@@ -69,6 +69,19 @@ export default function Home() {
     apiPost('updateState', { key, result }).then(() => setSaving(s => ({ ...s, [key]: false })));
   }, [apiPost]);
 
+  const setFollowup = useCallback((key, name) => {
+    setState(prev => ({ ...prev, [key]: { ...(prev[key] || {}), followup: name } }));
+    if (name) {
+      setFollowupNames(prev => {
+        if (prev.includes(name)) return prev;
+        const updated = [...prev, name].sort();
+        apiPost('saveFollowupNames', { names: updated });
+        return updated;
+      });
+    }
+    apiPost('updateState', { key, followup: name });
+  }, [apiPost, followupNames]);
+
   const setNote = useCallback((key, note) => {
     setState(prev => ({ ...prev, [key]: { ...prev[key], note } }));
     apiPost('updateState', { key, note });
