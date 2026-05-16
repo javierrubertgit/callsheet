@@ -246,6 +246,7 @@ export default function Home() {
                           ['Sent / Expiry', l.created + (l.expiry ? ' → ' + l.expiry : '')],
                           ['Monthly', fmt$(l.monthly)],
                           ['Upfront', fmt$(l.upfront)],
+                          ...(l.quoteUrl ? [['Quote Link', <a href={l.quoteUrl} target="_blank" rel="noreferrer" style={{ color: '#185FA5', textDecoration: 'none' }}>View Quote ↗</a>]] : []),
                         ].map(([label, val]) => (
                           <div key={label}>
                             <div style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '.04em' }}>{label}</div>

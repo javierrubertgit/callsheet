@@ -35,6 +35,8 @@ function parseQuoterPayload(req) {
     monthly:   parseFloat(b.monthly_total || 0) || null,
     upfront:   parseFloat(b.upfront_total || b.one_time_total || 0) || null,
     status:    b.status || 'pending',
+    uuid:      b.uuid || '',
+    quoteUrl:  b.uuid ? `https://conectacloudconsultants.quoter.com/quote/webview/${b.uuid}` : null,
   };
 }
 
