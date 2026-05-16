@@ -48,7 +48,7 @@ export default async function handler(req, res) {
     const crypto = require('crypto');
     const received = req.headers['x-quoter-hash'] || req.body?.hash || '';
     const expected = crypto.createHash('md5').update(hashKey).digest('hex');
-    if (received && received !== expected) return res.status(401).json({ error: 'Bad hash' });
+    if (received && received !== hashKey && received !== expected) return res.status(401).json({ error: 'Bad hash' });
   }
 
   const lead = parseQuoterPayload(req);
