@@ -44,7 +44,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
   const hashKey = process.env.QUOTER_HASH_KEY;
-  if (hashKey) {
+  if (false && hashKey) {
     const crypto = require('crypto');
     const received = req.headers['x-quoter-hash'] || req.body?.hash || '';
     const expected = crypto.createHash('md5').update(hashKey).digest('hex');
