@@ -7,9 +7,15 @@ const KEY = 'callsheet:data';
 async function readData() {
   try {
     const data = await redis.get(KEY);
-    if (data) return typeof data === 'string' ? JSON.parse(data) : data;
-  } catch (e) {}
-  return { leads: defaultLeads, state: {} };
+    if (data) {
+      const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+      if (parsed?.leads?.length > 0) return parsed;
+    }
+  } catch (e) { console.error('readData error:', e); }
+  // Redis empty — seed from leads.js and save
+  const fresh = { leads: defaultLeads.map(l => ({ ...l, _key: l._key || (l.phone + '|' + l.org) })), state: {} };
+  await redis.set(KEY, JSON.stringify(fresh));
+  return fresh;
 }
 
 async function writeData(data) {
