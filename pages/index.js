@@ -51,6 +51,7 @@ export default function Home() {
         const ls = d.leads.map(l => ({ ...l, _key: l._key || (l.phone + '|' + l.org) }));
         setLeads(ls);
         setState(d.state || {});
+        setFollowupNames(d.followupNames || []);
         setLoading(false);
       });
   }, []);
