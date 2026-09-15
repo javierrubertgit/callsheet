@@ -317,6 +317,14 @@ export default function Home() {
                         </div>
                       </div>
 
+                      {/* Lead notes (from canvass/import) */}
+                      {l.notes && (
+                        <div style={{ marginBottom: 12 }}>
+                          <div style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>Lead notes</div>
+                          <div style={{ fontSize: 13, color: '#444', background: '#f5f5f0', borderRadius: 8, padding: '9px 11px', lineHeight: 1.5 }}>{l.notes}</div>
+                        </div>
+                      )}
+
                       {/* Notes */}
                       <textarea
                         defaultValue={s.note || ''}
