@@ -38,6 +38,7 @@ export default async function handler(req, res) {
       if (result !== undefined) data.state[key].result = result;
       if (note !== undefined) data.state[key].note = note;
       if (followup !== undefined) data.state[key].followup = followup;
+      if (payload.source !== undefined) data.state[key].source = payload.source;
       await writeData(data);
       return res.status(200).json({ ok: true });
     }
@@ -49,6 +50,12 @@ export default async function handler(req, res) {
       if (!data.state[lead._key]) data.state[lead._key] = { result: 'pending', note: '' };
       await writeData(data);
       return res.status(200).json({ ok: true, lead });
+    }
+
+    if (action === 'saveSourceOptions') {
+      data.sourceOptions = payload.options;
+      await writeData(data);
+      return res.status(200).json({ ok: true });
     }
 
     if (action === 'saveFollowupNames') {
