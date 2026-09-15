@@ -39,7 +39,6 @@ export default function Home() {
   const [showAdd, setShowAdd] = useState(false);
   const [saving, setSaving] = useState({});
   const [followupNames, setFollowupNames] = useState([]);
-  const [sourceOptions, setSourceOptions] = useState([]);
   const [form, setForm] = useState({
     firstName: '', lastName: '', title: '', org: '', phone: '', email: '',
     quoteName: '', quoteNum: '', monthly: '', upfront: '', created: new Date().toISOString().split('T')[0], expiry: '', expired: 'false'
@@ -53,7 +52,6 @@ export default function Home() {
         setLeads(ls);
         setState(d.state || {});
         setFollowupNames(d.followupNames || []);
-    setSourceOptions(d.sourceOptions || []);
         setLoading(false);
       });
   }, []);
@@ -84,19 +82,6 @@ export default function Home() {
     }
     apiPost('updateState', { key, followup: name });
   }, [apiPost, followupNames]);
-
-  const setSource = useCallback((key, src) => {
-    setState(prev => ({ ...prev, [key]: { ...(prev[key] || {}), source: src } }));
-    if (src) {
-      setSourceOptions(prev => {
-        if (prev.includes(src)) return prev;
-        const updated = [...prev, src].sort();
-        apiPost('saveSourceOptions', { options: updated });
-        return updated;
-      });
-    }
-    apiPost('updateState', { key, source: src });
-  }, [apiPost, sourceOptions]);
 
   const setNote = useCallback((key, note) => {
     setState(prev => ({ ...prev, [key]: { ...prev[key], note } }));
@@ -332,35 +317,19 @@ export default function Home() {
                         </div>
                       </div>
 
-                      {/* Source */}
+                      {/* Lead notes (editable) */}
                       <div style={{ marginBottom: 12 }}>
-                        <div style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 6 }}>Source</div>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <select
-                            value={s.source || l.source || ''}
-                            onChange={e => setSource(key, e.target.value)}
-                            style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, background: '#fff' }}>
-                            <option value=''>— none —</option>
-                            {sourceOptions.map(o => <option key={o} value={o}>{o}</option>)}
-                          </select>
-                          <input
-                            id={'src-input-' + key}
-                            type='text'
-                            placeholder='Add source…'
-                            style={{ width: 100, padding: '8px 10px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13 }} />
-                          <button
-                            onClick={() => { const el = document.getElementById('src-input-' + key); const src = (el?.value || '').trim(); if (src) { setSource(key, src); el.value = ''; } }}
-                            style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: '#0F6E56', color: '#fff', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}>Add</button>
-                        </div>
+                        <div style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>Lead notes</div>
+                        <textarea
+                          defaultValue={l.notes || ''}
+                          onBlur={e => {
+                            const updated = { ...l, notes: e.target.value };
+                            setLeads(prev => prev.map(x => x._key === key ? updated : x));
+                            apiPost('updateLead', { key, notes: e.target.value });
+                          }}
+                          style={{ width: '100%', fontSize: 13, padding: '9px 11px', border: '1px solid #d0d0ca', borderRadius: 8, background: '#f5f5f0', color: '#1a1a18', resize: 'vertical', minHeight: 64, fontFamily: 'inherit', outline: 'none' }}
+                        />
                       </div>
-
-                      {/* Lead notes (from canvass/import) */}
-                      {l.notes && (
-                        <div style={{ marginBottom: 12 }}>
-                          <div style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>Lead notes</div>
-                          <div style={{ fontSize: 13, color: '#444', background: '#f5f5f0', borderRadius: 8, padding: '9px 11px', lineHeight: 1.5 }}>{l.notes}</div>
-                        </div>
-                      )}
 
                       {/* Notes */}
                       <textarea
