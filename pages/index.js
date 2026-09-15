@@ -39,6 +39,7 @@ export default function Home() {
   const [showAdd, setShowAdd] = useState(false);
   const [saving, setSaving] = useState({});
   const [followupNames, setFollowupNames] = useState([]);
+  const [sourceOptions, setSourceOptions] = useState([]);
   const [form, setForm] = useState({
     firstName: '', lastName: '', title: '', org: '', phone: '', email: '',
     quoteName: '', quoteNum: '', monthly: '', upfront: '', created: new Date().toISOString().split('T')[0], expiry: '', expired: 'false'
@@ -52,6 +53,7 @@ export default function Home() {
         setLeads(ls);
         setState(d.state || {});
         setFollowupNames(d.followupNames || []);
+    setSourceOptions(d.sourceOptions || []);
         setLoading(false);
       });
   }, []);
@@ -82,6 +84,19 @@ export default function Home() {
     }
     apiPost('updateState', { key, followup: name });
   }, [apiPost, followupNames]);
+
+  const setSource = useCallback((key, src) => {
+    setState(prev => ({ ...prev, [key]: { ...(prev[key] || {}), source: src } }));
+    if (src) {
+      setSourceOptions(prev => {
+        if (prev.includes(src)) return prev;
+        const updated = [...prev, src].sort();
+        apiPost('saveSourceOptions', { options: updated });
+        return updated;
+      });
+    }
+    apiPost('updateState', { key, source: src });
+  }, [apiPost, sourceOptions]);
 
   const setNote = useCallback((key, note) => {
     setState(prev => ({ ...prev, [key]: { ...prev[key], note } }));
@@ -314,6 +329,28 @@ export default function Home() {
                             const name = el.value.trim();
                             if (name) { setFollowup(key, name); el.value = ''; }
                           }} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #0F6E56', background: '#0F6E56', color: '#fff', fontSize: 13, cursor: 'pointer' }}>Add</button>
+                        </div>
+                      </div>
+
+                      {/* Source */}
+                      <div style={{ marginBottom: 12 }}>
+                        <div style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 6 }}>Source</div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <select
+                            value={s.source || l.source || ''}
+                            onChange={e => setSource(key, e.target.value)}
+                            style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, background: '#fff' }}>
+                            <option value=''>— none —</option>
+                            {sourceOptions.map(o => <option key={o} value={o}>{o}</option>)}
+                          </select>
+                          <input
+                            id={'src-input-' + key}
+                            type='text'
+                            placeholder='Add source…'
+                            style={{ width: 100, padding: '8px 10px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13 }} />
+                          <button
+                            onClick={() => { const el = document.getElementById('src-input-' + key); const src = (el?.value || '').trim(); if (src) { setSource(key, src); el.value = ''; } }}
+                            style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: '#0F6E56', color: '#fff', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}>Add</button>
                         </div>
                       </div>
 
