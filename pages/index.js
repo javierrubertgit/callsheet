@@ -288,9 +288,15 @@ export default function Home() {
                     <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f0f0ea' }} onClick={e => e.stopPropagation()}>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 20px', marginBottom: 14 }}>
                         {[
-                          ['Phone', <a href={`tel:${l.phone}`} style={{ color: '#185FA5', textDecoration: 'none' }}>{l.phone || '—'}</a>],
-                          ['Email', <a href={`mailto:${l.email}`} style={{ color: '#185FA5', textDecoration: 'none' }}>{l.email || '—'}</a>],
-                          ['Title', l.title || '—'],
+                          ['Phone', editingContact[key]
+                            ? <input id={'edit-phone-'+key} defaultValue={l.phone} style={{ width: '100%', padding: '4px 8px', borderRadius: 6, border: '1px solid #d0d0ca', fontSize: 13 }} />
+                            : <a href={`tel:${l.phone}`} style={{ color: '#185FA5', textDecoration: 'none' }}>{l.phone || '—'}</a>],
+                          ['Email', editingContact[key]
+                            ? <input id={'edit-email-'+key} defaultValue={l.email} style={{ width: '100%', padding: '4px 8px', borderRadius: 6, border: '1px solid #d0d0ca', fontSize: 13 }} />
+                            : <a href={`mailto:${l.email}`} style={{ color: '#185FA5', textDecoration: 'none' }}>{l.email || '—'}</a>],
+                          ['Title', editingContact[key]
+                            ? <input id={'edit-title-'+key} defaultValue={l.title} style={{ width: '100%', padding: '4px 8px', borderRadius: 6, border: '1px solid #d0d0ca', fontSize: 13 }} />
+                            : (l.title || '—')],
                           ['Quote #', l.quoteNum || '—'],
                           ['Quote', l.quoteName || '—'],
                           ['Sent / Expiry', l.created + (l.expiry ? ' → ' + l.expiry : '')],
