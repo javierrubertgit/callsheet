@@ -52,9 +52,17 @@ export default async function handler(req, res) {
     }
 
     if (action === 'updateLead') {
-      const { key, notes } = payload;
+      const { key, notes, firstName, lastName, org, phone, email, title } = payload;
       const idx = data.leads.findIndex(l => l._key === key || (l.phone + '|' + l.org) === key);
-      if (idx >= 0 && notes !== undefined) data.leads[idx].notes = notes;
+      if (idx >= 0) {
+        if (notes !== undefined) data.leads[idx].notes = notes;
+        if (firstName !== undefined) data.leads[idx].firstName = firstName;
+        if (lastName !== undefined) data.leads[idx].lastName = lastName;
+        if (org !== undefined) data.leads[idx].org = org;
+        if (phone !== undefined) data.leads[idx].phone = phone;
+        if (email !== undefined) data.leads[idx].email = email;
+        if (title !== undefined) data.leads[idx].title = title;
+      }
       await writeData(data);
       return res.status(200).json({ ok: true });
     }

@@ -39,6 +39,7 @@ export default function Home() {
   const [showAdd, setShowAdd] = useState(false);
   const [saving, setSaving] = useState({});
   const [followupNames, setFollowupNames] = useState([]);
+  const [editingContact, setEditingContact] = useState({});
   const [sourceOptions, setSourceOptions] = useState([]);
   const [form, setForm] = useState({
     firstName: '', lastName: '', title: '', org: '', phone: '', email: '',
@@ -108,6 +109,12 @@ export default function Home() {
     setLeads(prev => prev.filter(l => l._key !== key));
     setState(prev => { const n = { ...prev }; delete n[key]; return n; });
     apiPost('removeLead', { key });
+  }, [apiPost]);
+
+  const saveContact = useCallback((key, fields) => {
+    setLeads(prev => prev.map(l => l._key === key ? { ...l, ...fields } : l));
+    setEditingContact(prev => ({ ...prev, [key]: false }));
+    apiPost('updateLead', { key, ...fields });
   }, [apiPost]);
 
   const addLead = useCallback(() => {
@@ -256,8 +263,18 @@ export default function Home() {
                       {initials(l)}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.firstName} {l.lastName}</div>
-                      <div style={{ fontSize: 12, color: '#888', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.org}</div>
+                      {editingContact[key] ? (
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          <input id={'edit-fn-'+key} defaultValue={l.firstName} placeholder='First name' style={{ flex: 1, minWidth: 80, padding: '4px 8px', borderRadius: 6, border: '1px solid #d0d0ca', fontSize: 13 }} />
+                          <input id={'edit-ln-'+key} defaultValue={l.lastName} placeholder='Last name' style={{ flex: 1, minWidth: 80, padding: '4px 8px', borderRadius: 6, border: '1px solid #d0d0ca', fontSize: 13 }} />
+                          <input id={'edit-org-'+key} defaultValue={l.org} placeholder='Organization' style={{ width: '100%', padding: '4px 8px', borderRadius: 6, border: '1px solid #d0d0ca', fontSize: 13 }} />
+                        </div>
+                      ) : (
+                        <>
+                          <div style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.firstName} {l.lastName}</div>
+                          <div style={{ fontSize: 12, color: '#888', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.org}</div>
+                        </>
+                      )}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                       <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 20, fontWeight: 500, background: badgeBg, color: badgeColor }}>{badgeText}</span>
@@ -377,9 +394,27 @@ export default function Home() {
                       />
 
                       {/* Remove */}
-                      <button onClick={() => removeLead(key)} style={{ marginTop: 10, fontSize: 12, padding: '5px 12px', border: '1px solid #f0c0c0', borderRadius: 8, background: '#fff', color: '#c0392b', cursor: 'pointer' }}>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                        {editingContact[key] ? (
+                          <button onClick={() => saveContact(key, {
+                            firstName: document.getElementById('edit-fn-'+key)?.value || l.firstName,
+                            lastName: document.getElementById('edit-ln-'+key)?.value || l.lastName,
+                            org: document.getElementById('edit-org-'+key)?.value || l.org,
+                            phone: document.getElementById('edit-phone-'+key)?.value || l.phone,
+                            email: document.getElementById('edit-email-'+key)?.value || l.email,
+                            title: document.getElementById('edit-title-'+key)?.value || l.title,
+                          })} style={{ fontSize: 12, padding: '5px 12px', border: '1px solid #0F6E56', borderRadius: 8, background: '#0F6E56', color: '#fff', cursor: 'pointer' }}>
+                            ✓ Save contact
+                          </button>
+                        ) : (
+                          <button onClick={() => setEditingContact(prev => ({ ...prev, [key]: true }))} style={{ fontSize: 12, padding: '5px 12px', border: '1px solid #d0d0ca', borderRadius: 8, background: '#fff', color: '#555', cursor: 'pointer' }}>
+                            ✎ Edit contact
+                          </button>
+                        )}
+                        <button onClick={() => removeLead(key)} style={{ fontSize: 12, padding: '5px 12px', border: '1px solid #f0c0c0', borderRadius: 8, background: '#fff', color: '#c0392b', cursor: 'pointer' }}>
                         ✕ Remove from list
                       </button>
+                      </div>
                     </div>
                   )}
                 </div>
