@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { unsealData } from 'iron-session';
 
-const PUBLIC = ['/api/login', '/api/logout', '/api/webhook', '/api/reset', '/api/debug', '/api/debug2', '/api/import', '/api/fixlead', '/login'];
+const PUBLIC = ['/api/login', '/api/logout', '/api/webhook', '/api/reset', '/api/debug', '/api/debug2', '/api/import', '/api/fixlead', '/api/odoo-sync', '/login'];
 
 export async function middleware(req) {
   const { pathname } = req.nextUrl;
