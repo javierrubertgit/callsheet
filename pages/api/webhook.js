@@ -1,7 +1,7 @@
 // pages/api/webhook.js
 import { Redis } from '@upstash/redis';
 import defaultLeads from '../../lib/leads';
-import { findOdooLead, createOdooLead } from '../../lib/odoo';
+import { odooAuth, odooCall, buildLeadVals } from '../../lib/odoo';
 
 const redis = new Redis({ url: process.env.KV_REST_API_URL, token: process.env.KV_REST_API_TOKEN });
 const KEY = 'callsheet:data';
@@ -32,7 +32,6 @@ function parseQuoterPayload(req) {
       const params = new URLSearchParams(b);
       b = Object.fromEntries(params.entries());
     }
-    // Store raw for debug
     req._rawWebhook = b;
     if (b?.data) b = JSON.parse(b.data);
 
@@ -105,11 +104,22 @@ export default async function handler(req, res) {
   let odooId = null;
   let odooError = null;
   try {
-    const existing = await findOdooLead(lead.phone, lead.email);
-    if (!existing) {
-      odooId = await createOdooLead(lead, data.state[key] || {});
+    const { cookie } = await odooAuth();
+
+    // Check if lead already exists
+    const searchDomain = lead.phone && lead.email
+      ? ['|', ['phone', '=', lead.phone], ['email_from', '=', lead.email]]
+      : lead.phone
+        ? [['phone', '=', lead.phone]]
+        : [['email_from', '=', lead.email]];
+
+    const existing = await odooCall('crm.lead', 'search', [searchDomain], { limit: 1 }, cookie);
+
+    if (!existing?.length) {
+      const vals = buildLeadVals(lead, data.state[key] || {});
+      odooId = await odooCall('crm.lead', 'create', [vals], {}, cookie);
     } else {
-      odooId = existing;
+      odooId = existing[0];
     }
   } catch (e) {
     odooError = e.message;
