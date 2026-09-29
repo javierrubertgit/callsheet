@@ -74,7 +74,6 @@ function parseQuoterPayload(req) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
-  // Debug: store last webhook payload
   try {
     const raw = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
     await redis.set('callsheet:last_webhook', raw, { ex: 86400 });
@@ -87,7 +86,6 @@ export default async function handler(req, res) {
   const key = (lead.phone || lead.email) + '|' + (lead.org || lead.email);
   lead._key = key;
 
-  // 1. Save to Redis
   const data = await readData();
   const idx = data.leads.findIndex(l =>
     l._key === key || (l.phone === lead.phone && l.org === lead.org)
@@ -100,26 +98,26 @@ export default async function handler(req, res) {
   }
   await writeData(data);
 
-  // 2. Push to Odoo CRM (non-blocking — don't fail webhook if Odoo is down)
+  // Push to Odoo (non-blocking)
   let odooId = null;
   let odooError = null;
   try {
-    const { cookie } = await odooAuth();
+    const uid = await odooAuth();
 
-    // Check if lead already exists
-    const searchDomain = lead.phone && lead.email
+    const domain = lead.phone && lead.email
       ? ['|', ['phone', '=', lead.phone], ['email_from', '=', lead.email]]
-      : lead.phone
-        ? [['phone', '=', lead.phone]]
-        : [['email_from', '=', lead.email]];
+      : lead.phone ? [['phone', '=', lead.phone]] : [['email_from', '=', lead.email]];
 
-    const existing = await odooCall('crm.lead', 'search', [searchDomain], { limit: 1 }, cookie);
+    const searchResult = await odooCall(uid, 'crm.lead', 'search', [domain], { limit: 1 });
+    const existingId = typeof searchResult === 'string'
+      ? (searchResult.match(/<int>(\d+)<\/int>/)?.[1] ? parseInt(searchResult.match(/<int>(\d+)<\/int>/)[1]) : null)
+      : null;
 
-    if (!existing?.length) {
+    if (!existingId) {
       const vals = buildLeadVals(lead, data.state[key] || {});
-      odooId = await odooCall('crm.lead', 'create', [vals], {}, cookie);
+      odooId = await odooCall(uid, 'crm.lead', 'create', [vals], {});
     } else {
-      odooId = existing[0];
+      odooId = existingId;
     }
   } catch (e) {
     odooError = e.message;

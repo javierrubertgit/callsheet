@@ -6,26 +6,23 @@ import { odooAuth, odooCall, buildLeadVals } from '../../lib/odoo';
 const redis = new Redis({ url: process.env.KV_REST_API_URL, token: process.env.KV_REST_API_TOKEN });
 const KEY = 'callsheet:data';
 
-async function findOdooLead(phone, email, cookie) {
-  const domain = [];
-  if (phone) domain.push(['phone', '=', phone]);
-  if (email) {
-    if (domain.length) domain.push('|');
-    domain.push(['email_from', '=', email]);
-  }
-  if (!domain.length) return null;
-  // Odoo domain with OR: [['phone','=',p], '|', ['email_from','=',e]] — needs reorder
-  const searchDomain = phone && email
+async function findOdooLead(uid, phone, email) {
+  if (!phone && !email) return null;
+  const domain = phone && email
     ? ['|', ['phone', '=', phone], ['email_from', '=', email]]
-    : domain;
-  const ids = await odooCall('crm.lead', 'search', [searchDomain], { limit: 1 }, cookie);
-  return ids?.length ? ids[0] : null;
+    : phone ? [['phone', '=', phone]] : [['email_from', '=', email]];
+  const result = await odooCall(uid, 'crm.lead', 'search', [domain], { limit: 1 });
+  // result is raw XML for arrays — check for an int inside
+  if (typeof result === 'string') {
+    const m = result.match(/<int>(\d+)<\/int>/);
+    return m ? parseInt(m[1]) : null;
+  }
+  return null;
 }
 
-async function createOdooLead(lead, state, cookie) {
+async function createOdooLead(uid, lead, state) {
   const vals = buildLeadVals(lead, state);
-  const id = await odooCall('crm.lead', 'create', [vals], {}, cookie);
-  return id;
+  return odooCall(uid, 'crm.lead', 'create', [vals], {});
 }
 
 export default async function handler(req, res) {
@@ -40,11 +37,10 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Redis read failed', detail: e.message });
   }
 
-  // Authenticate ONCE — reuse cookie for all leads
-  let cookie;
+  // Authenticate ONCE
+  let uid;
   try {
-    const auth = await odooAuth();
-    cookie = auth.cookie;
+    uid = await odooAuth();
   } catch (e) {
     return res.status(500).json({ error: 'Odoo auth failed', detail: e.message });
   }
@@ -53,10 +49,10 @@ export default async function handler(req, res) {
 
   for (const lead of data.leads) {
     try {
-      const existing = await findOdooLead(lead.phone, lead.email, cookie);
+      const existing = await findOdooLead(uid, lead.phone, lead.email);
       if (existing) { results.skipped++; continue; }
       const state = data.state[lead._key] || {};
-      await createOdooLead(lead, state, cookie);
+      await createOdooLead(uid, lead, state);
       results.pushed++;
     } catch (e) {
       results.errors.push({ key: lead._key, org: lead.org, error: e.message });
